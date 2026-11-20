@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel PDF Viewer</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f1f3f5;
+}
+
+header {
+    background: #17365d;
+    color: white;
+    padding: 14px;
+    text-align: center;
+    font-size: 20px;
+}
+
+#message {
+    padding: 20px;
+    text-align: center;
+    color: #333;
+}
+
+iframe {
+    width: 100%;
+    height: calc(100vh - 55px);
+    border: none;
+    display: none;
+    background: white;
+}
+</style>
+</head>
+
+<body>
+
+<header>PDF Page Viewer</header>
+
+<div id="message">
+    No PDF selected.<br><br>
+    Open this viewer using a PDF link from Excel.
+</div>
+
+<iframe id="pdfViewer"></iframe>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+
+const pdfFile = params.get("file");
+const pageNumber = Math.max(1, parseInt(params.get("page"), 10) || 1);
+
+if (pdfFile) {
+    try {
+        const pdfURL = new URL(pdfFile);
+
+        if (pdfURL.protocol === "https:" ||
+            pdfURL.protocol === "http:") {
+
+            const viewer = document.getElementById("pdfViewer");
+
+            viewer.src = pdfURL.href +
+                "#page=" + pageNumber + "&toolbar=1";
+
+            viewer.style.display = "block";
+            document.getElementById("message").style.display = "none";
+        } else {
+            document.getElementById("message").textContent =
+                "Invalid PDF address.";
+        }
+    } catch (error) {
+        document.getElementById("message").textContent =
+            "Unable to open the PDF address.";
+    }
+}
+</script>
+
+</body>
+</html>
