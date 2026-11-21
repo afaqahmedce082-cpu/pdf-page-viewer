@@ -11,7 +11,7 @@ header{background:#222;color:white;padding:12px}
 button,input{padding:9px}
 #page{width:55px}
 canvas{display:block;margin:10px auto;max-width:100%;height:auto;background:white}
-#status{padding:10px}
+#status{padding:12px}
 </style>
 </head>
 <body>
@@ -27,17 +27,16 @@ canvas{display:block;margin:10px auto;max-width:100%;height:auto;background:whit
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-const API = "https://script.google.com/macros/s/AKfycbxJBeLi8H1c2zSXRnUjuhInBxl1EQGHbVDLhl30asegdG2CxGCDKZEhja7WqARE6Nbw/exec";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc =
+const API="https://script.google.com/macros/s/AKfycbxJBeLi8H1c2zSXRnUjuhInBxl1EQGHbVDLhl30asegdG2CxGCDKZEhja7WqARE6Nbw/exec";
+pdfjsLib.GlobalWorkerOptions.workerSrc=
 "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-const params = new URLSearchParams(location.search);
-const fileId = params.get("fileId");
-let currentPage = Math.max(1,parseInt(params.get("page")||"1",10));
+const params=new URLSearchParams(location.search);
+const fileId=params.get("fileId");
+let currentPage=Math.max(1,parseInt(params.get("page")||"1",10));
 let pdfDoc;
 
-function jsonp(start,end) {
+function jsonp(start,end){
  return new Promise((resolve,reject)=>{
   const cb="pdfCallback"+Date.now()+Math.floor(Math.random()*10000);
   const script=document.createElement("script");
@@ -55,8 +54,8 @@ function jsonp(start,end) {
  });
 }
 
-function decodeBase64(s){
- const binary=atob(s);
+function decodeBase64(data){
+ const binary=atob(data);
  const bytes=new Uint8Array(binary.length);
  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
  return bytes;
@@ -65,37 +64,33 @@ function decodeBase64(s){
 async function loadPDF(){
  try{
   if(!fileId)throw Error("Missing PDF file ID");
-  document.getElementById("status").textContent="Connecting to Google Drive...";
   const first=await jsonp(0,65536);
   if(first.error)throw Error(first.error);
 
-  const initial=decodeBase64(first.data);
-  const transport=new pdfjsLib.PDFDataRangeTransport(first.size,initial);
+  const size=first.size;
+  const all=new Uint8Array(size);
+  all.set(decodeBase64(first.data),0);
 
-  transport.requestDataRange=async function(begin,end){
-   try{
-    const result=await jsonp(begin,end);
-    if(result.error)throw Error(result.error);
-    this.onDataRange(begin,decodeBase64(result.data));
-   }catch(error){
-    document.getElementById("status").textContent="PDF transfer failed: "+error.message;
-   }
-  };
+  const chunkSize=65536;
+  for(let start=chunkSize;start<size;start+=chunkSize){
+   document.getElementById("status").textContent=
+    "Loading PDF: "+Math.round(start/size*100)+"%";
+   const end=Math.min(start+chunkSize,size);
+   const part=await jsonp(start,end);
+   if(part.error)throw Error(part.error);
+   all.set(decodeBase64(part.data),start);
+  }
 
-  transport.transportReady();
-
-  pdfDoc=await pdfjsLib.getDocument({
-   range:transport,
-   disableStream:true,
-   disableAutoFetch:true
-  }).promise;
+  document.getElementById("status").textContent="Opening PDF...";
+  pdfDoc=await pdfjsLib.getDocument({data:all}).promise;
 
   currentPage=Math.min(currentPage,pdfDoc.numPages);
   document.getElementById("total").textContent="of "+pdfDoc.numPages;
   document.getElementById("page").value=currentPage;
   await renderPage(currentPage);
  }catch(error){
-  document.getElementById("status").textContent="Could not load PDF: "+error.message;
+  document.getElementById("status").textContent=
+   "PDF failed: "+error.message;
  }
 }
 
