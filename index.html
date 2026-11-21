@@ -122,9 +122,8 @@ async function loadPDF() {
 
     try {
         const url =
-            "https://drive.google.com/uc?export=download&id=" +
-            encodeURIComponent(fileId);
-
+    "https://pdf-drive-proxy35d6.afaqahmedce082.workers.dev/?id=" +
+    encodeURIComponent(fileId);
         pdfDoc = await pdfjsLib.getDocument(url).promise;
 
         if (requestedPage > pdfDoc.numPages) {
