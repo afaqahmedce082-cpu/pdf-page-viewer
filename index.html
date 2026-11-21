@@ -124,7 +124,11 @@ async function loadPDF() {
         const url =
     "https://pdf-drive-proxy35d6.afaqahmedce082.workers.dev/?id=" +
     encodeURIComponent(fileId);
-        pdfDoc = await pdfjsLib.getDocument(url).promise;
+       pdfDoc = await pdfjsLib.getDocument({
+    url: url,
+    disableRange: true,
+    disableStream: true
+}).promise;
 
         if (requestedPage > pdfDoc.numPages) {
             throw new Error("Requested page does not exist.");
