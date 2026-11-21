@@ -8,119 +8,44 @@
 body{margin:0;font-family:Arial;background:#eee}
 header{background:#222;color:white;padding:12px}
 #controls{padding:10px;display:flex;gap:8px;align-items:center}
-button,input{padding:9px}
+button,input{padding:10px}
 #page{width:55px}
-canvas{display:block;margin:10px auto;max-width:100%;height:auto;background:white}
-#status{padding:12px}
+iframe{width:100%;height:85vh;border:0;background:white}
+#status{padding:10px}
 </style>
 </head>
 <body>
-<header>PDF Page Viewer</header>
+<header>ACL PDF Page Viewer</header>
 <div id="controls">
 <button onclick="changePage(-1)">Previous</button>
 <input id="page" type="number" min="1" value="1">
 <button onclick="changePage(1)">Next</button>
-<span id="total"></span>
 </div>
 <div id="status">Loading PDF...</div>
-<div id="pdf"></div>
+<iframe id="viewer"></iframe>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-const API="https://script.google.com/macros/s/AKfycbxJBeLi8H1c2zSXRnUjuhInBxl1EQGHbVDLhl30asegdG2CxGCDKZEhja7WqARE6Nbw/exec";
-pdfjsLib.GlobalWorkerOptions.workerSrc=
-"https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
 const params=new URLSearchParams(location.search);
 const fileId=params.get("fileId");
-let currentPage=Math.max(1,parseInt(params.get("page")||"1",10));
-let pdfDoc;
+let page=Math.max(1,Number(params.get("page"))||1);
 
-function jsonp(start,end){
- return new Promise((resolve,reject)=>{
-  const cb="pdfCallback"+Date.now()+Math.floor(Math.random()*10000);
-  const script=document.createElement("script");
-  const timer=setTimeout(()=>{cleanup();reject(Error("Request timed out"));},60000);
-  function cleanup(){
-   clearTimeout(timer);
-   delete window[cb];
-   script.remove();
-  }
-  window[cb]=data=>{cleanup();resolve(data);};
-  script.onerror=()=>{cleanup();reject(Error("Google Drive connection failed"));};
-  script.src=API+"?fileId="+encodeURIComponent(fileId)+
-   "&start="+start+"&end="+(end-1)+"&callback="+cb;
-  document.head.appendChild(script);
- });
+function showPage(){
+ document.getElementById("page").value=page;
+ document.getElementById("viewer").src=
+ "https://drive.google.com/file/d/"+encodeURIComponent(fileId)+
+ "/preview#page="+page;
+ document.getElementById("status").textContent="Requested page "+page;
 }
-
-function decodeBase64(data){
- const binary=atob(data);
- const bytes=new Uint8Array(binary.length);
- for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
- return bytes;
+function changePage(amount){
+ page=Math.max(1,page+amount);
+ showPage();
 }
-
-async function loadPDF(){
- try{
-  if(!fileId)throw Error("Missing PDF file ID");
-  const first=await jsonp(0,65536);
-  if(first.error)throw Error(first.error);
-
-  const size=first.size;
-  const all=new Uint8Array(size);
-  all.set(decodeBase64(first.data),0);
-
-  const chunkSize=65536;
-  for(let start=chunkSize;start<size;start+=chunkSize){
-   document.getElementById("status").textContent=
-    "Loading PDF: "+Math.round(start/size*100)+"%";
-   const end=Math.min(start+chunkSize,size);
-   const part=await jsonp(start,end);
-   if(part.error)throw Error(part.error);
-   all.set(decodeBase64(part.data),start);
-  }
-
-  document.getElementById("status").textContent="Opening PDF...";
-  pdfDoc=await pdfjsLib.getDocument({data:all}).promise;
-
-  currentPage=Math.min(currentPage,pdfDoc.numPages);
-  document.getElementById("total").textContent="of "+pdfDoc.numPages;
-  document.getElementById("page").value=currentPage;
-  await renderPage(currentPage);
- }catch(error){
-  document.getElementById("status").textContent=
-   "PDF failed: "+error.message;
- }
-}
-
-async function renderPage(number){
- const page=await pdfDoc.getPage(number);
- const viewport=page.getViewport({scale:1.3});
- const canvas=document.createElement("canvas");
- const context=canvas.getContext("2d");
- canvas.width=viewport.width;
- canvas.height=viewport.height;
- document.getElementById("pdf").replaceChildren(canvas);
- await page.render({canvasContext:context,viewport}).promise;
- document.getElementById("status").textContent="Showing page "+number;
-}
-
-async function changePage(amount){
- if(!pdfDoc)return;
- currentPage=Math.max(1,Math.min(pdfDoc.numPages,currentPage+amount));
- document.getElementById("page").value=currentPage;
- await renderPage(currentPage);
-}
-
-document.getElementById("page").addEventListener("change",async function(){
- if(!pdfDoc)return;
- currentPage=Math.max(1,Math.min(pdfDoc.numPages,Number(this.value)||1));
- this.value=currentPage;
- await renderPage(currentPage);
+document.getElementById("page").addEventListener("change",function(){
+ page=Math.max(1,Number(this.value)||1);
+ showPage();
 });
-
-loadPDF();
+if(fileId)showPage();
+else document.getElementById("status").textContent="Missing PDF ID";
 </script>
 </body>
 </html>
