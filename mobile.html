@@ -1,1 +1,57 @@
 
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mobile PDF Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+    }
+    header {
+      padding: 12px;
+      background: #222;
+      color: white;
+      font-size: 16px;
+    }
+    iframe {
+      width: 100%;
+      height: calc(100vh - 48px);
+      border: none;
+      background: white;
+    }
+    #message {
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<header>PDF Page Viewer</header>
+<div id="message">Loading PDF...</div>
+<iframe id="pdfViewer" hidden></iframe>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const fileId = params.get("fileId");
+  const page = Math.max(1, parseInt(params.get("page") || "1", 10));
+
+  if (fileId && /^[a-zA-Z0-9_-]+$/.test(fileId)) {
+    const viewer = document.getElementById("pdfViewer");
+    viewer.src =
+      "https://drive.google.com/file/d/" +
+      fileId + "/preview#page=" + page;
+
+    viewer.hidden = false;
+    document.getElementById("message").hidden = true;
+  } else {
+    document.getElementById("message").textContent =
+      "No valid PDF file ID received. Open this viewer using an Excel link.";
+  }
+</script>
+
+</body>
+</html>
+
